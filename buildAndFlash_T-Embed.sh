@@ -8,7 +8,7 @@ TARGET="esp32s3"
 GHOST_DIR="/home/runner/work/Flipper-Zero-ESP32-Port/Flipper-Zero-ESP32-Port/multi-boot/ghostesp"
 PATCH_SCRIPT="./patchGhost.py"
 # Exakter Pfad zu deiner Board-Konfiguration innerhalb des Repositories
-SDK_PATH="configs/sdkconfig.TEmbedCC1101"
+SDK_PATH="configs/sdkconfig.TEmbedC1101"
 
 echo "=== 1. ESP-IDF Umgebung laden ==="
 if [ -f "$HOME/esp/esp-idf/export.sh" ]; then
