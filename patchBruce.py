@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Keep the bundled Bruce checkout up to date and apply the multi-boot patch.
+"""Keep the bundled GhostESP checkout up to date and apply the multi-boot patch.
 
 What it does (idempotent, safe to run before every build):
-  1. clones BruceDevices/firmware into multi-boot/bruce if it's missing
+  1. clones GhostESP-Revival/GhostESP into multi-boot/ghostesp if it's missing
   2. resets the working tree to a pristine state
   3. `git pull --ff-only` so a build always picks up upstream changes
-  4. re-applies tools/bruce_multiboot.patch (adds the "Flipper Zero" main-menu
+  4. re-applies tools/ghostesp_multiboot.patch (adds the "Flipper Zero" main-menu
      entry that reboots into the ota_0 slot — see 00_Skills/multi-boot.md)
-  5. copies partitions_multiboot.csv over Bruce's custom_16Mb.csv so both
+  5. copies partitions_multiboot.csv over GhostESP's custom_16Mb.csv so both
      firmwares are built against the exact same partition table
 
 Exits non-zero (loudly) if the patch no longer applies — that means upstream
-Bruce moved the menu code and tools/bruce_multiboot.patch must be regenerated.
+GhostESP moved the menu code and tools/ghostesp_multiboot.patch must be regenerated.
 """
 
 import shutil
@@ -20,13 +20,13 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
-BRUCE_DIR = REPO_ROOT / "multi-boot" / "bruce"
-BRUCE_REPO_URL = "https://github.com/BruceDevices/firmware.git"
-PATCH_FILE = REPO_ROOT / "tools" / "bruce_multiboot.patch"
+GHOST_DIR = REPO_ROOT / "multi-boot" / "ghostesp"
+GHOST_REPO_URL = "https://github.com/GhostESP-Revival/GhostESP.git"
+PATCH_FILE = REPO_ROOT / "tools" / "ghostesp_multiboot.patch"
 PARTITIONS_SRC = REPO_ROOT / "partitions_multiboot.csv"
 PARTITIONS_DST_NAME = "custom_16Mb.csv"
 
-# Files that tools/bruce_multiboot.patch *creates* (as opposed to modifies).
+# Files that tools/ghostesp_multiboot.patch *creates* (as opposed to modifies).
 # `git reset --hard` won't remove these, so we delete them explicitly before
 # re-applying the patch to keep the operation idempotent.
 PATCH_CREATED_FILES = [
@@ -41,7 +41,7 @@ def run(cmd):
 
 
 def git(*args, check=True):
-    cmd = ["git", "-C", str(BRUCE_DIR), *args]
+    cmd = ["git", "-C", str(GHOST_DIR), *args]
     print("+ " + " ".join(cmd))
     return subprocess.run(cmd, check=check)
 
@@ -49,7 +49,7 @@ def git(*args, check=True):
 def reset_worktree():
     git("reset", "--hard", "HEAD")
     for rel in PATCH_CREATED_FILES:
-        path = BRUCE_DIR / rel
+        path = GHOST_DIR / rel
         if path.exists():
             print(f"  rm {rel}")
             path.unlink()
@@ -61,26 +61,26 @@ def main():
     if not PARTITIONS_SRC.is_file():
         sys.exit(f"error: missing partition table: {PARTITIONS_SRC}")
 
-    if not (BRUCE_DIR / ".git").is_dir():
-        if BRUCE_DIR.exists():
-            if any(BRUCE_DIR.iterdir()):
+    if not (GHOST_DIR / ".git").is_dir():
+        if GHOST_DIR.exists():
+            if any(GHOST_DIR.iterdir()):
                 sys.exit(
-                    f"error: {BRUCE_DIR} exists but is not a git checkout. "
-                    "Remove it and rerun, or run patchBruce.py manually."
+                    f"error: {GHOST_DIR} exists but is not a git checkout. "
+                    "Remove it and rerun, or run patchGhost.py manually."
                 )
-            BRUCE_DIR.rmdir()  # leftover empty dir — git clone wants it gone
-        print(f"Bruce checkout not found, cloning into {BRUCE_DIR} ...")
-        BRUCE_DIR.parent.mkdir(parents=True, exist_ok=True)
-        run(["git", "clone", "--depth", "1", BRUCE_REPO_URL, str(BRUCE_DIR)])
+            GHOST_DIR.rmdir()  # leftover empty dir — git clone wants it gone
+        print(f"GhostESP checkout not found, cloning into {GHOST_DIR} ...")
+        GHOST_DIR.parent.mkdir(parents=True, exist_ok=True)
+        run(["git", "clone", "--depth", "1", GHOST_REPO_URL, str(GHOST_DIR)])
 
     # 1) pristine tree
     reset_worktree()
 
-    # 2) keep Bruce current
+    # 2) keep GhostESP current
     if git("pull", "--ff-only", check=False).returncode != 0:
         print(
             "warning: 'git pull' failed (offline / non-ff?), continuing with the "
-            "local Bruce checkout",
+            "local GhostESP checkout",
             file=sys.stderr,
         )
         reset_worktree()
@@ -88,17 +88,17 @@ def main():
     # 3) apply the multi-boot menu patch
     if git("apply", "--whitespace=nowarn", str(PATCH_FILE), check=False).returncode != 0:
         sys.exit(
-            "\nerror: tools/bruce_multiboot.patch did not apply.\n"
-            "Upstream Bruce most likely changed src/core/main_menu.{h,cpp}.\n"
+            "\nerror: tools/ghostesp_multiboot.patch did not apply.\n"
+            "Upstream GhostESP most likely changed src/core/main_menu.{h,cpp}.\n"
             "Regenerate the patch — see 00_Skills/multi-boot.md ('Updating the "
-            "Bruce patch').\n"
+            "GhostESP patch').\n"
         )
 
     # 4) single-source the partition table
-    shutil.copyfile(PARTITIONS_SRC, BRUCE_DIR / PARTITIONS_DST_NAME)
-    print(f"copied {PARTITIONS_SRC.name} -> multi-boot/bruce/{PARTITIONS_DST_NAME}")
+    shutil.copyfile(PARTITIONS_SRC, GHOST_DIR / PARTITIONS_DST_NAME)
+    print(f"copied {PARTITIONS_SRC.name} -> multi-boot/ghostesp/{PARTITIONS_DST_NAME}")
 
-    print("Bruce checkout is patched and ready for multi-boot.")
+    print("GhostESP checkout is patched and ready for multi-boot.")
 
 
 if __name__ == "__main__":
